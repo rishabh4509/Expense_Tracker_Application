@@ -7,7 +7,13 @@ Money management is a crucial skill in daily life, but many people struggle to k
 • To categorize expenses such as Food, Travel, Shopping, Bills, etc.\
 • To allow users to view their total monthly expenditure.\
 • To visualize expenses using graphs or summaries.\
-• To help users maintain a personal budget.
+• To help users maintain a personal budget.\
+\
+***Problem Statement***\
+Managing personal finances is a common challenge faced by individuals in daily life. People often spend money on various activities such as food, travel, shopping, bills, and entertainment, but they fail to keep track of where their money is going. As a result, they may overspend, struggle to budget properly, or find it difficult to analyze their monthly expenses.
+
+
+
 
 
 
