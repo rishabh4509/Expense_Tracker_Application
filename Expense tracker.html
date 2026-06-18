@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .form-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .export-pdf-btn {
+            background-color: #2196F3;
+        }
+        .export-pdf-btn:hover {
+            background-color: #0b7dda;
+        }
+        .expenses-list {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+            cursor: pointer;
+            user-select: none;
+        }
+        th:hover {
+            background-color: #e0e0e0;
+        }
+        .delete-btn {
+            background-color: #f44336;
+            padding: 5px 10px;
+            font-size: 12px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .delete-btn:hover {
+            background-color: #da190b;
+        }
+        .receipt-preview {
+            max-width: 50px;
+            max-height: 50px;
+            border-radius: 4px;
+            cursor: pointer;
+            object-fit: cover;
+            border: 1px solid #ddd;
+        }
+        .receipt-cell {
+            text-align: center;
+        }
+        .total {
+            font-weight: bold;
+            text-align: right;
+            margin-top: 10px;
+            font-size: 18px;
+            color: #333;
+        }
+        .error {
+            color: #f44336;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .sort-icon::after {
+            content: ' ↕';
+            opacity: 0.5;
+        }
+        .sort-asc::after {
+            content: ' ↑';
+        }
+        .sort-desc::after {
+            content: ' ↓';
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        .controls {
+            margin-bottom: 15px;
+        }
+        .export-controls {
+            margin-bottom: 10px;
+        }
+        .export-controls input {
+            width: auto;
+            margin-right: 10px;
+        }
+        .export-controls button {
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Expense Tracker</h1>
+    <!-- Input Form -->
+    <div class="form-container">
+        <h2>Add A New Item:</h2>
+        <form id="expenseForm">
+            <label for="category">Category:</label>
+            <select id="category" required>
+                <option value="Food">Food</option>
+                <option value="Travel">Travel</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Bills">Bills</option>
+                <option value="Other">Other</option>
+            </select>
+       
+            <label for="type">Type:</label>
+            <select id="type" required>
+                <option value="Debit Card">Debit Card</option>
+                <option value="Credit Card">Credit Card</option>
+                <option value="Online Payment / UPI_ID">Online Payment / UPI_ID</option>
+                <option value="Cash">Cash</option>
+            </select>
+       
+            <label for="name">Name:</label>
+            <input type="text" id="name" placeholder="Item Name" required>
+       
+            <label for="date">Date:</label>
+            <input type="date" id="date" required>
+       
+            <label for="amount">Amount (₹):</label>
+            <input type="number" id="amount" step="0.01" min="0" placeholder="₹ 0.00" required>
+       
+            <label for="receipt">Payment Receipt (Optional, <5MB):</label>
+            <input type="file" id="receipt" accept="image/*">
+            <div id="receiptError" class="error" style="display:none;"></div>
+       
+            <button type="submit" id="submitBtn">Add Expense</button>
+        </form>
+    </div>
+    <!-- Expenses List -->
+    <div class="expenses-list">
+        <div class="controls">
+            <div class="export-controls">
+                <input type="date" id="exportStartDate" style="margin-right: 5px;">
+                <input type="date" id="exportEndDate" style="margin-right: 10px;">
+                <label>
+                    <input type="checkbox" id="includeReceipts" checked> Include Receipts
+                </label>
+                <button class="export-pdf-btn" onclick="exportToPDF()">Export to PDF</button>
+            </div>
+        </div>
+        <h2>Expenses List</h2>
+        <table id="expensesTable" role="table">
+            <thead>
+                <tr>
+                    <th scope="col" data-sort="category" class="sort-icon">Category</th>
+                    <th scope="col" data-sort="type" class="sort-icon">Type</th>
+                    <th scope="col" data-sort="name" class="sort-icon">Name</th>
+                    <th scope="col" data-sort="date" class="sort-icon">Date</th>
+                    <th scope="col" data-sort="amount" class="sort-icon">Amount (₹)</th>
+                    <th scope="col">Receipt</th>
+                    <th scope="col">Action</th>
+                </tr>
+            </thead>
+            <tbody id="expensesBody" role="rowgroup"></tbody>
+        </table>
+        <div class="total" id="totalAmount">Total: ₹0.00</div>
+        <div class="chart-container">
+            <canvas id="expenseChart"></canvas>
+        </div>
+    </div>
+    <script>
+        // Load existing expenses from localStorage with robust date handling
+        let expenses = [];
+        let sortConfig = { key: 'date', direction: 'desc' }; // Default: newest first
+        let chart = null;
+        try {
+            const stored = localStorage.getItem('expenses');
+            if (stored) {
+                const loadedExpenses = JSON.parse(stored);
+                expenses = loadedExpenses
+                    .map(exp => {
+                        const dateObj = new Date(exp.date);
+                        const isoDate = dateObj.toISOString().split('T')[0];
+                        if (isNaN(dateObj.getTime())) {
+                            console.warn('Invalid date in expense:', exp);
+                            return null;
+                        }
+                        return {
+                            ...exp,
+                            isoDate: isoDate
+                        };
+                    })
+                    .filter(exp => exp !== null); // Filter out invalid entries
+            }
+        } catch (e) {
+            console.error('Error loading expenses:', e);
+        }
+        renderExpenses();
+      
+        // Handle form submission
+        document.getElementById('expenseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Adding...';
+            const category = document.getElementById('category').value;
+            const type = document.getElementById('type').value;
+            let name = document.getElementById('name').value.trim();
+            const date = document.getElementById('date').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const receiptFile = document.getElementById('receipt').files[0];
+            const receiptError = document.getElementById('receiptError');
+            // Validation
+            if (!name) {
+                alert('Item name cannot be empty.');
+                resetForm();
+                return;
+            }
+            if (isNaN(amount) || amount < 0) {
+                alert('Amount must be positive number.');
+                resetForm();
+                return;
+            }
+            if (receiptFile && receiptFile.size > 5 * 1024 * 1024) {
+                receiptError.textContent = 'Receipt too large (max 5MB).';
+                receiptError.style.display = 'block';
+                resetForm();
+                return;
+            }
+            let receipt = null;
+            if (receiptFile) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    receipt = e.target.result;
+                    addExpense(category, type, name, date, amount, receipt);
+                    resetForm();
+                };
+                reader.onerror = () => {
+                    alert('Error reading receipt. Try again.');
+                    resetForm();
+                };
+                reader.readAsDataURL(receiptFile);
+            } else {
+                addExpense(category, type, name, date, amount, receipt);
+                resetForm();
+            }
+        });
+      
+        function addExpense(category, type, name, date, amount, receipt) {
+            const isoDate = new Date(date).toISOString().split('T')[0];
+            const formattedDate = new Date(date).toLocaleDateString('en-IN'); // Enhanced: Indian date format DD/MM/YYYY
+            const expense = { category, type, name, date: formattedDate, isoDate, amount, receipt };
+            expenses.push(expense);
+            saveExpenses();
+            renderExpenses();
+        }
+      
+        function saveExpenses() {
+            try {
+                localStorage.setItem('expenses', JSON.stringify(expenses));
+            } catch (e) {
+                alert('Storage full! Consider exporting data.');
+            }
+        }
+      
+        // Enhanced Export to PDF with date range, category summary, pie chart, and improved receipt handling
+        async function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const startDate = document.getElementById('exportStartDate').value;
+            const endDate = document.getElementById('exportEndDate').value;
+            const includeReceipts = document.getElementById('includeReceipts').checked;
+
+            // Filter expenses by date range if provided
+            let filteredExpenses = expenses;
+            if (startDate || endDate) {
+                filteredExpenses = expenses.filter(exp => {
+                    const expDate = new Date(exp.isoDate);
+                    const start = startDate ? new Date(startDate) : new Date(0);
+                    const end = endDate ? new Date(endDate) : new Date(9999, 11, 31);
+                    return expDate >= start && expDate <= end;
+                });
+            }
+
+            // Title with date range
+            let title = 'Expense Tracker Report';
+            if (startDate || endDate) {
+                const startStr = startDate ? new Date(startDate).toLocaleDateString('en-IN') : 'Beginning';
+                const endStr = endDate ? new Date(endDate).toLocaleDateString('en-IN') : 'Now';
+                title += ` (${startStr} to ${endStr})`;
+            }
+            doc.setFontSize(16);
+            doc.text(title, 14, 20);
+
+            // Expenses table
+            doc.autoTable({
+                head: [['Category', 'Type', 'Name', 'Date', 'Amount (₹)', 'Receipt']],
+                body: filteredExpenses.map(exp => [
+                    exp.category,
+                    exp.type,
+                    exp.name,
+                    exp.date,
+                    exp.amount.toFixed(2),
+                    exp.receipt ? 'Yes' : 'No'
+                ]),
+                startY: 30,
+                theme: 'striped',
+                styles: { fontSize: 8 },
+                headStyles: { fillColor: [200, 200, 200] },
+                margin: { left: 10, right: 10 },
+                didDrawPage: (data) => {
+                    // Add page numbers
+                    const pageCount = doc.internal.getNumberOfPages();
+                    for (let i = 1; i <= pageCount; i++) {
+                        doc.setPage(i);
+                        doc.setFontSize(10);
+                        doc.text(`Page ${i} of ${pageCount}`, 180, 290);
+                    }
+                }
+            });
+
+            const total = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+            let currentY = doc.lastAutoTable.finalY + 10;
+            doc.setFontSize(12);
+            doc.text(`Total Expenses: ₹${total.toFixed(2)}`, 14, currentY);
+            currentY += 15;
+
+            // Category summary table
+            const categoryTotals = {};
+            filteredExpenses.forEach(exp => {
+                categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + exp.amount;
+            });
+            if (Object.keys(categoryTotals).length > 0) {
+                currentY += 5;
+                doc.text('Summary by Category:', 14, currentY);
+                currentY += 10;
+                doc.autoTable({
+                    head: [['Category', 'Total (₹)']],
+                    body: Object.entries(categoryTotals).map(([cat, amt]) => [cat, amt.toFixed(2)]),
+                    startY: currentY,
+                    theme: 'grid',
+                    styles: { fontSize: 9 },
+                    headStyles: { fillColor: [150, 200, 150] },
+                    margin: { left: 10, right: 10 }
+                });
+                currentY = doc.lastAutoTable.finalY + 10;
+            }
+
+            // Add pie chart as image (ensure chart is rendered first)
+            renderExpenses(); // Ensure chart is up-to-date (uses filtered? Wait, chart uses all; for simplicity, use all expenses chart)
+            await new Promise(resolve => setTimeout(resolve, 100)); // Small delay for chart render
+            const chartCanvas = document.getElementById('expenseChart');
+            const chartDataURL = chartCanvas.toDataURL('image/png');
+            if (currentY > 250) {
+                doc.addPage();
+                currentY = 20;
+            }
+            doc.text('Expense Distribution by Category:', 14, currentY);
+            currentY += 10;
+            doc.addImage(chartDataURL, 'PNG', 10, currentY, 190, 100); // Scaled chart image
+            currentY += 110;
+
+            // Enhanced receipts section with better scaling (preserves aspect ratio, async handling)
+            const hasReceipts = includeReceipts && filteredExpenses.some(exp => exp.receipt);
+            if (hasReceipts) {
+                currentY += 5;
+                doc.text('Attached Receipts:', 14, currentY);
+                currentY += 10;
+
+                for (const exp of filteredExpenses) {
+                    if (exp.receipt) {
+                        // Page break if needed
+                        if (currentY > 250) {
+                            doc.addPage();
+                            currentY = 20;
+                        }
+
+                        doc.setFontSize(10);
+                        doc.text(`Receipt for "${exp.name}" (${exp.category}, ₹${exp.amount.toFixed(2)} on ${exp.date})`, 14, currentY);
+                        currentY += 8;
+
+                        const dataUrl = exp.receipt;
+                        const matches = dataUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+                        if (matches) {
+                            const base64 = matches[2];
+                            const img = new Image();
+                            await new Promise((resolve, reject) => {
+                                img.onload = () => {
+                                    const maxWidth = 180;
+                                    const maxHeight = 120;
+                                    let imgWidth = img.width;
+                                    let imgHeight = img.height;
+                                    // Preserve aspect ratio
+                                    if (imgWidth > maxWidth) {
+                                        imgHeight *= (maxWidth / imgWidth);
+                                        imgWidth = maxWidth;
+                                    }
+                                    if (imgHeight > maxHeight) {
+                                        imgWidth *= (maxHeight / imgHeight);
+                                        imgHeight = maxHeight;
+                                    }
+                                    doc.addImage(base64, 'JPEG', 10, currentY, imgWidth, imgHeight);
+                                    currentY += imgHeight + 10;
+                                    resolve();
+                                };
+                                img.onerror = reject;
+                                img.src = dataUrl;
+                            });
+                        } else {
+                            doc.text('Invalid receipt format', 14, currentY);
+                            currentY += 8;
+                        }
+                    }
+                }
+            }
+
+            // Add footer to all pages
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.text(`Generated on ${new Date().toLocaleDateString('en-IN')} | Total Items: ${filteredExpenses.length}`, 14, 290);
+            }
+
+            doc.save(`expenses_report_${new Date().toISOString().split('T')[0]}.pdf`);
+        }
+      
+        // Render expenses with sorting and chart
+        function renderExpenses() {
+            // Sort first
+            expenses.sort((a, b) => {
+                let aVal, bVal;
+                if (sortConfig.key === 'amount') {
+                    aVal = a.amount;
+                    bVal = b.amount;
+                } else if (sortConfig.key === 'date') {
+                    aVal = a.isoDate;
+                    bVal = b.isoDate;
+                } else {
+                    aVal = a[sortConfig.key].toLowerCase();
+                    bVal = b[sortConfig.key].toLowerCase();
+                }
+                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+            const tbody = document.getElementById('expensesBody');
+            tbody.innerHTML = '';
+            let total = 0;
+            expenses.forEach((exp, index) => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = exp.category;
+                row.insertCell(1).textContent = exp.type;
+                row.insertCell(2).textContent = exp.name;
+                row.insertCell(3).textContent = exp.date;
+                const amountCell = row.insertCell(4);
+                amountCell.textContent = exp.amount.toFixed(2);
+                total += exp.amount;
+                const receiptCell = row.insertCell(5);
+                receiptCell.className = 'receipt-cell';
+                if (exp.receipt) {
+                    const img = document.createElement('img');
+                    img.src = exp.receipt;
+                    img.className = 'receipt-preview';
+                    img.alt = `Receipt for ${exp.name}`;
+                    img.onclick = () => {
+                        const newWin = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+                        newWin.document.write(`
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <title>Receipt for ${exp.name}</title>
+                                <style>
+                                    body { margin: 0; padding: 20px; background: #f4f4f4; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: Arial, sans-serif; }
+                                    .receipt-container { max-width: 90%; max-height: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2); border-radius: 8px; overflow: auto; }
+                                    img { width: 100%; height: auto; display: block; }
+                                    .close-btn { position: absolute; top: 10px; right: 10px; background: #f44336; color: white; border: none; padding: 10px; border-radius: 50%; cursor: pointer; font-size: 18px; }
+                                </style>
+                            </head>
+                            <body>
+                                <button class="close-btn" onclick="window.close()">×</button>
+                                <div class="receipt-container">
+                                    <img src="${exp.receipt}" alt="Full Receipt">
+                                </div>
+                            </body>
+                            </html>
+                        `);
+                        newWin.document.close();
+                    };
+                    receiptCell.appendChild(img);
+                } else {
+                    receiptCell.textContent = 'No Receipt';
+                }
+                const cellAction = row.insertCell(6);
+                const delBtn = document.createElement('button');
+                delBtn.textContent = "Delete";
+                delBtn.className = "delete-btn";
+                delBtn.onclick = () => deleteExpense(index);
+                delBtn.setAttribute('aria-label', `Delete ${exp.name} expense`);
+                cellAction.appendChild(delBtn);
+            });
+            document.getElementById('totalAmount').textContent = `Total: ₹${total.toFixed(2)}`;
+          
+            // Render pie chart by category (using all expenses for chart consistency)
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            const categoryTotals = {};
+            expenses.forEach(exp => {
+                categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + exp.amount;
+            });
+            const labels = Object.keys(categoryTotals);
+            const data = Object.values(categoryTotals);
+            if (chart) {
+                chart.destroy();
+            }
+            chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+      
+        // Delete an expense
+        function deleteExpense(index) {
+            if (confirm(`Delete "${expenses[index].name}"?`)) {
+                expenses.splice(index, 1);
+                saveExpenses();
+                renderExpenses();
+            }
+        }
+      
+        // Sorting headers
+        document.querySelectorAll('th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                const key = th.dataset.sort;
+                if (sortConfig.key === key) {
+                    sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortConfig.key = key;
+                    sortConfig.direction = 'asc';
+                }
+                // Update icons
+                document.querySelectorAll('th').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+                th.classList.add(sortConfig.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+                renderExpenses();
+            });
+        });
+      
+        function resetForm() {
+            document.getElementById('expenseForm').reset();
+            document.getElementById('receiptError').style.display = 'none';
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('submitBtn').textContent = 'Add Expense';
+            document.getElementById('date').valueAsDate = new Date();
+        }
+      
+        // Set default date to today
+        document.getElementById('date').valueAsDate = new Date();
+
+        // Set default export date range to last month
+        const today = new Date();
+        const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        document.getElementById('exportStartDate').valueAsDate = lastMonth;
+        document.getElementById('exportEndDate').valueAsDate = today;
+    </script>
+</body>
+</html>
