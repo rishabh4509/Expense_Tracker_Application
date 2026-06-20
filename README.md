@@ -42,9 +42,12 @@ You can implement the project using:\
 • Personal Budget Management.\
 • Helps individuals track daily, weekly, and monthly expenses.\
 • Allows better control over spending habits.\
-\ 
+ 
 ***Conclusion***\
 The Expense Tracker Application successfully records and manages daily expenses. It simplifies financial tracking, helps users analyze spending habits, and supports better money management. This project demonstrates practical use of Python for file handling and user interaction.
+
+***How website look like***
+
 
 
 
