@@ -50,6 +50,7 @@ The Expense Tracker Application successfully records and manages daily expenses.
 
 ![image alt](https://github.com/rishabh4509/Expense_Tracker_Application/blob/b9b692a0cd3935d1527ab9cfc4ececb38d7c880b/Screenshot%202026-06-19%20190736.png)
 
+![image alt](https://github.com/rishabh4509/Expense_Tracker_Application/blob/6b6faf06d532cb6d75d120a181b1a92d5c4c459b/Screenshot%202026-06-19%20190801.png)
 
 
 
