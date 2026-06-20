@@ -48,6 +48,7 @@ The Expense Tracker Application successfully records and manages daily expenses.
 
 ***How website look like***
 
+![image alt]()
 
 
 
